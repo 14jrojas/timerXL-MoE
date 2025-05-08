@@ -64,7 +64,7 @@ def data_provider(args, flag):
             batch_size=batch_size,
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
-            persistent_workers=True,
+            persistent_workers=False,
             pin_memory=True,
             drop_last=drop_last
         )

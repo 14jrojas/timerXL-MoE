@@ -140,3 +140,58 @@ class AttentionLayer(nn.Module):
 
         return self.out_projection(out), attn
 
+
+class AttentionLayerMoE(nn.Module):
+    def __init__(self, attention, d_model, n_heads, d_keys=None, d_values=None, num_experts=16, num_experts_per_token=2, hidden_dim=None, out_dim=None, activation=F.silu, bias=True, ffn_dropout_p=0.0):
+        super(AttentionLayerMoE, self).__init__()
+
+        d_keys = d_keys or (d_model // n_heads)
+        d_values = d_values or (d_model // n_heads)
+
+        self.inner_attention = attention
+        self.query_projection = nn.Linear(d_model, d_keys * n_heads)
+        self.key_projection = nn.Linear(d_model, d_keys * n_heads)
+        self.value_projection = nn.Linear(d_model, d_values * n_heads)
+        # JROJAS: esta es la red neuronal interna que hay que sustituir?
+        # self.out_projection = nn.Linear(d_values * n_heads, d_model)
+
+        # con parametros por defecto
+        self.out_projection = MoEFeedForward(num_experts=num_experts, 
+                                             num_experts_per_token=num_experts_per_token, 
+                                             in_dim=d_model,
+                                             hidden_dim=hidden_dim,
+                                             out_dim=out_dim,
+                                             activation=activation,
+                                             bias=bias,
+                                             ffn_dropout_p=ffn_dropout_p)
+
+        self.n_heads = n_heads
+
+        # register centroid
+        self.register_buffer(
+            "centroid", torch.empty(num_experts, d_model, dtype=torch.float32)
+        )
+
+    def forward(self, queries, keys, values, attn_mask, n_vars=None, n_tokens=None, tau=None, delta=None):
+        B, L, _ = queries.shape
+        _, S, _ = keys.shape
+        H = self.n_heads
+
+        queries = self.query_projection(queries).view(B, L, H, -1)
+        keys = self.key_projection(keys).view(B, S, H, -1)
+        values = self.value_projection(values).view(B, S, H, -1)
+
+        out, attn = self.inner_attention(
+            queries,
+            keys,
+            values,
+            attn_mask,
+            n_vars=n_vars,
+            n_tokens=n_tokens,
+            tau=tau,
+            delta=delta
+        )
+        out = out.view(B, L, -1)
+
+        return self.out_projection(out, centroid=self.centroid), attn
+
