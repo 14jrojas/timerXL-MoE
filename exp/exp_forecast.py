@@ -222,8 +222,10 @@ class Exp_Forecast(Exp_Basic):
                     checkpoint[name] = param
             self.model.load_state_dict(checkpoint)
             
-        preds = []
-        trues = []
+        total_mae, total_mse, total_rmse = 0.0, 0.0, 0.0
+        total_mape, total_mspe, total_smape = 0.0, 0.0, 0.0
+        total_count = 0
+
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
@@ -259,8 +261,20 @@ class Exp_Forecast(Exp_Basic):
                 pred = outputs
                 true = batch_y
 
-                preds.append(pred)
-                trues.append(true)
+                if self.args.covariate:
+                    outputs = outputs[:, :, -1]
+                    batch_y = batch_y[:, :, -1] 
+
+                mae, mse, rmse, mape, mspe, smape = metric(outputs.numpy(), batch_y.numpy())
+                batch_size = outputs.shape[0]
+                total_mae += mae * batch_size
+                total_mse += mse * batch_size
+                total_rmse += rmse * batch_size
+                total_mape += mape * batch_size
+                total_mspe += mspe * batch_size
+                total_smape += smape * batch_size
+                total_count += batch_size
+
                 if (i + 1) % 100 == 0:
                     if (self.args.ddp and self.args.local_rank == 0) or not self.args.ddp:
                         speed = (time.time() - time_now) / iter_count
@@ -276,18 +290,17 @@ class Exp_Forecast(Exp_Basic):
                     pd = np.array(pred[0, :, -1])
                     visual(gt, pd, os.path.join(dir_path, f'{i}.pdf'))
 
-        preds = torch.cat(preds, dim=0).numpy()
-        trues = torch.cat(trues, dim=0).numpy()
-        print('preds shape:', preds.shape)
-        print('trues shape:', trues.shape)
-        if self.args.covariate:
-            preds = preds[:, :, -1]
-            trues = trues[:, :, -1]
-        mae, mse, rmse, mape, mspe, smape = metric(preds, trues)
-        print('mse:{}, mae:{}'.format(mse, mae))
+        avg_mae = total_mae / total_count
+        avg_mse = total_mse / total_count
+        avg_rmse = total_rmse / total_count
+        avg_mape = total_mape / total_count
+        avg_mspe = total_mspe / total_count
+        avg_smape = total_smape / total_count
+
+        print('mse:{}, mae:{}'.format(avg_mse, avg_mae))
         f = open("result_long_term_forecast.txt", 'a')
         f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}'.format(mse, mae))
+        f.write('mse:{}, mae:{}'.format(avg_mse, avg_mae))
         f.write('\n')
         f.write('\n')
         f.close()
