@@ -1,4 +1,16 @@
-# OpenLTM
+# Enhancing Transformer-Based Time Series Forecasting with Mixture of Experts.
+
+Master's thesis repository: Enhancing Transformer-Based Time Series Forecasting with Mixture of Experts.
+
+This repository is a fork of the [OpenLTM](https://github.com/thuml/OpenLTM) repository, which is used as a basis for the development of the work.
+
+[Here](#openltm) you can see the original README.
+
+## Description
+
+## Usage
+
+## OpenLTM
 
 OpenLTM is a open codebase aiming to provide a pipeline to develop and evaluate large time-series models.
 
@@ -10,12 +22,12 @@ OpenLTM is a open codebase aiming to provide a pipeline to develop and evaluate 
 
 :triangular_flag_on_post: **News** (2024.10) We include several large time-series models, release pre-training code, and provide scripts.
 
-## What is LTM
+### What is LTM
 
 LTM (**L**arge **T**ime-Series **M**odel) is a series of scalable deep models built on foundation backbones (e.g. Transformers) and large-scale pre-training, which will be applied to a variety of time series data and diverse downstream tasks. For more information, here we list some related slides: [[CN]](https://cloud.tsinghua.edu.cn/f/1f3fdcf3304c4a82bc13/), [[Eng]](https://cloud.tsinghua.edu.cn/f/8a585e37f45f46fd97d0/).
 
 
-## Model Checklist
+### Model Checklist
 
 - [x] **Timer-XL** - Timer-XL: Long-Context Transformer for Unified Time Series Forecasting. [[ICLR 2025]](https://arxiv.org/abs/2410.04803), [[Code]](https://github.com/thuml/Timer-XL)
 - [x] **Moirai** - Unified Training of Universal Time Series Forecasting Transformers. [[ICML 2024]](https://arxiv.org/abs/2402.02592), [[Code]](https://github.com/SalesforceAIResearch/uni2ts)
@@ -31,7 +43,7 @@ LTM (**L**arge **T**ime-Series **M**odel) is a series of scalable deep models bu
 - [ ] A Decoder-Only Foundation Model for Time-Series Forecasting. [[ICML 2024]](https://arxiv.org/abs/2310.10688), [[Code]](https://github.com/google-research/timesfm)
 
 
-## Usage
+### Usage
 
 1. Install Python 3.11 For convenience, execute the following command.
 
@@ -88,7 +100,7 @@ To evaluate zero-shot forecasting of large time-series models. Here we list some
 > [!NOTE]
 > LTMs are still small in compared to foundation models of other modalities (for example, it is okay to use RTX 4090s for adaptation or A100s for pre-training).
 
-## Citation
+### Citation
 
 If you find this repo helpful, please cite our paper. 
 
@@ -107,14 +119,14 @@ If you find this repo helpful, please cite our paper.
 }
 ```
 
-## Acknowledgment
+### Acknowledgment
 
 We appreciate the following GitHub repos a lot for their valuable code and efforts:
 - Time-Series-Library (https://github.com/thuml/Time-Series-Library)
 - Large-Time-Series-Model (https://github.com/thuml/Large-Time-Series-Model)
 - AutoTimes (https://github.com/thuml/AutoTimes)
 
-## Contributors
+### Contributors
 
 If you have any questions or want to use the code, feel free to contact:
 * Yong Liu (liuyong21@mails.tsinghua.edu.cn)
