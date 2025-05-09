@@ -51,7 +51,6 @@ class FeedForward(nn.Module):
     def forward(
         self,
         x: Float[torch.Tensor, "... in_dim"],
-        centroid: Optional[Float[torch.Tensor, "expert in_dim"]] = None,
     ) -> Float[torch.Tensor, "... out_dim"]:
         x = self._in_proj(x)
         return self.dropout2(self.fc2(self.dropout1(x)))
@@ -122,35 +121,28 @@ class MoEFeedForward(nn.Module):
             ]
         )
 
+        self.gate = nn.Linear(in_dim, num_experts)
+        self.gate_dropout = nn.Dropout(p=0.2)
+
     def forward(
         self,
         x: Float[torch.Tensor, "... in_dim"],
-        centroid: Optional[Float[torch.Tensor, "expert in_dim"]] = None,
     ) -> Float[torch.Tensor, "... dim"]:
         x_squashed = x.view(-1, x.shape[-1])
 
-        centroid = centroid.to(x.device).type_as(x)
-        if len(x.shape) > 3:
-            x_temp = x.view(-1, x.shape[-2], x.shape[-1])
-        else:
-            x_temp = x
-        centroid = centroid.unsqueeze(0).repeat(x_temp.shape[0], 1, 1)
-        cdist = torch.cdist(x_temp, centroid)
-        gate_logits = cdist.view(-1, cdist.shape[-1])
+        gate_logits = self.gate_dropout(self.gate(x_squashed))
 
-        weights, selected_experts = torch.topk(gate_logits, self.num_experts_per_token)
-        weights = nn.functional.softmax(
-            weights,
-            dim=1,
-            dtype=torch.float,
-        ).type_as(x)
+        topk_logits, selected_experts = torch.topk(gate_logits, self.num_experts_per_token, dim=-1)
+
+        weights = F.softmax(topk_logits, dim=-1)
 
         results = torch.zeros_like(x_squashed)
         for i, expert in enumerate(self.experts):
             batch_idx, nth_expert = torch.where(selected_experts == i)
-            results[batch_idx] += weights[batch_idx, nth_expert, None] * expert(
-                x_squashed[batch_idx]
-            )
+            if batch_idx.numel() > 0:
+                expert_output = expert(x_squashed[batch_idx])
+                expert_weight = weights[batch_idx, nth_expert].unsqueeze(-1)
+                results[batch_idx] += expert_weight * expert_output
 
         results = results.view_as(x)
         return results

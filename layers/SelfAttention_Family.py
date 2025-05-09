@@ -168,11 +168,6 @@ class AttentionLayerMoE(nn.Module):
 
         self.n_heads = n_heads
 
-        # register centroid
-        self.register_buffer(
-            "centroid", torch.empty(num_experts, d_model, dtype=torch.float32)
-        )
-
     def forward(self, queries, keys, values, attn_mask, n_vars=None, n_tokens=None, tau=None, delta=None):
         B, L, _ = queries.shape
         _, S, _ = keys.shape
@@ -194,5 +189,5 @@ class AttentionLayerMoE(nn.Module):
         )
         out = out.view(B, L, -1)
 
-        return self.out_projection(out, centroid=self.centroid), attn
+        return self.out_projection(out), attn
 
