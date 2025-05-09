@@ -22,7 +22,7 @@ class Model(nn.Module):
                                     output_attention=self.output_attention, 
                                     d_model=configs.d_model, num_heads=configs.n_heads,
                                     covariate=configs.covariate, flash_attention=configs.flash_attention),
-                                    configs.d_model, configs.n_heads),
+                                    configs.d_model, configs.n_heads, num_experts=configs.num_experts, num_experts_per_token=configs.num_experts_per_token),
                     configs.d_model,
                     configs.d_ff,
                     dropout=configs.dropout,

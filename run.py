@@ -48,6 +48,10 @@ if __name__ == '__main__':
     parser.add_argument('--visualize', action='store_true', help='visualize', default=False)
     parser.add_argument('--flash_attention', action='store_true', help='flash attention', default=False)
 
+    # MoE arguments
+    parser.add_argument('--num_experts', type=int, default=16, help='number of experts')
+    parser.add_argument('--num_experts_per_token', type=int, default=2, help='number of experts per token')
+
     # adaptation
     parser.add_argument('--adaptation', action='store_true', help='adaptation', default=False)
     parser.add_argument('--pretrain_model_path', type=str, default='pretrain_model.pth', help='pretrain model path')
