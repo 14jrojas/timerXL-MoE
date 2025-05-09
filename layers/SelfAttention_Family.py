@@ -7,6 +7,7 @@ from layers.Attn_Bias import BinaryAttentionBias
 from layers.Attn_Projection import QueryKeyProjection, RotaryProjection
 from utils.masking import TriangularCausalMask, TimerMultivariateMask, TimerCovariateMask
 
+from layers.FFN import MoEFeedForward
 
 class FullAttention(nn.Module):
     def __init__(self, mask_flag=True, scale=None, attention_dropout=0.1, output_attention=False):
