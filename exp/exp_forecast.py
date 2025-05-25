@@ -169,8 +169,8 @@ class Exp_Forecast(Exp_Basic):
                     if (self.args.ddp and self.args.local_rank == 0) or not self.args.ddp:
                         print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
                         speed = (time.time() - time_now) / iter_count
-                        left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                        print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+                        left_time = speed * (train_steps - i)
+                        print('\tspeed: {:.4f}s/iter; epoch left time: {:.4f}s'.format(speed, left_time))
                         iter_count = 0
                         time_now = time.time()
 
@@ -229,6 +229,15 @@ class Exp_Forecast(Exp_Basic):
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
+
+        # if MoE module
+        if hasattr(self.model, 'blocks'):
+            for block in self.model.blocks.attn_layers:
+                if hasattr(block.attention.out_projection, 'experts'):
+                    block.attention.out_projection.expert_usage_counter = torch.zeros(
+                        len(block.attention.out_projection.experts)
+                    ).to(self.device)
+
         time_now = time.time()
         test_steps = len(test_loader)
         iter_count = 0
@@ -298,9 +307,27 @@ class Exp_Forecast(Exp_Basic):
         avg_smape = total_smape / total_count
 
         print('mse:{}, mae:{}'.format(avg_mse, avg_mae))
+
+        # expert usage
+        for i, block in enumerate(self.model.blocks.attn_layers):
+            moe = block.attention.out_projection
+            if hasattr(moe, 'expert_usage_counter'):
+                counter = moe.expert_usage_counter
+                if counter.sum() > 0:
+                    usage_pct = counter / counter.sum()
+                    print(f"[Layer {i}] Expert usage: {np.round(usage_pct.tolist(), 3)}")
+
         f = open("result_long_term_forecast.txt", 'a')
         f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}'.format(avg_mse, avg_mae))
+        f.write('mse:{}, mae:{}\n'.format(avg_mse, avg_mae))
+        # expert usage
+        for i, block in enumerate(self.model.blocks.attn_layers):
+            moe = block.attention.out_projection
+            if hasattr(moe, 'expert_usage_counter'):
+                counter = moe.expert_usage_counter
+                if counter.sum() > 0:
+                    usage_pct = counter / counter.sum()
+                    f.write(f"[Layer {i}] Expert usage: {np.round(usage_pct.tolist(), 3)}\n")
         f.write('\n')
         f.write('\n')
         f.close()

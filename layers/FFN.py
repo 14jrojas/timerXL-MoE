@@ -145,4 +145,11 @@ class MoEFeedForward(nn.Module):
                 results[batch_idx] += expert_weight * expert_output
 
         results = results.view_as(x)
+
+        if hasattr(self, 'expert_usage_counter'):
+            expert_counts = torch.bincount(
+                selected_experts.view(-1), minlength=self.num_experts
+            )
+            self.expert_usage_counter += expert_counts.detach().to(self.expert_usage_counter.device)
+
         return results
