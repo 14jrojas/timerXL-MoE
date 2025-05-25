@@ -1,4 +1,7 @@
+logs/*
+notebooks/*
 todo.txt
+result_long_term_forecast.txt
 
 .DS_Store
 dataset/
