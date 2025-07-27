@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0,1
 model_name=timer_xl_moe
 token_num=30
 token_len=96
@@ -7,7 +7,7 @@ seq_len=$[$token_num*$token_len]
 python -u run.py \
   --task_name forecast \
   --is_training 1 \
-  --root_path ./dataset/UTSD-full-npy \
+  --root_path ./dataset/UTSD-4G-npy \
   --model_id utsd \
   --model $model_name \
   --data Utsd_Npy \
@@ -17,8 +17,8 @@ python -u run.py \
   --test_seq_len $seq_len \
   --test_pred_len 96 \
   --e_layers 8 \
-  --d_model 512 \
-  --d_ff 512 \
+  --d_model 1024 \
+  --d_ff 2048 \
   --batch_size 512 \
   --learning_rate 0.00005 \
   --train_epochs 10 \
@@ -28,5 +28,5 @@ python -u run.py \
   --use_norm \
   --valid_last \
   --dp \
-  --devices 0 \
+  --devices 0,1 \
   --num_workers 0 \
