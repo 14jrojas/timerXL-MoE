@@ -152,4 +152,4 @@ class MoEFeedForward(nn.Module):
             )
             self.expert_usage_counter += expert_counts.detach().to(self.expert_usage_counter.device)
 
-        return results
+        return results, weights

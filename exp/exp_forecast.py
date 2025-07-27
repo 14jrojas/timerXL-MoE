@@ -10,7 +10,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.nn import DataParallel
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from utils.tools import EarlyStopping, adjust_learning_rate, visual
+from utils.tools import EarlyStopping, adjust_learning_rate, visual, visual_with_lookback
 from utils.metrics import metric
 
 warnings.filterwarnings('ignore')
@@ -77,7 +77,17 @@ class Exp_Forecast(Exp_Basic):
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
                 
-                outputs = self.model(batch_x, batch_x_mark, batch_y_mark)
+                out = self.model(batch_x, batch_x_mark, batch_y_mark)
+
+                if isinstance(out, tuple) and len(out) == 3:
+                    outputs, attns, balance_loss = out
+                elif isinstance(out, tuple) and len(out) == 2:
+                    outputs, balance_loss = out
+                    attns = None
+                else:
+                    outputs = out
+                    balance_loss = None
+
                 if is_test or self.args.nonautoregressive:
                         outputs = outputs[:, -self.args.output_token_len:, :]
                         batch_y = batch_y[:, -self.args.output_token_len:, :].to(self.device)
@@ -93,7 +103,11 @@ class Exp_Forecast(Exp_Basic):
                         outputs = outputs[:, :, -1]
                         batch_y = batch_y[:, :, -1]
                 loss = criterion(outputs, batch_y)
-
+                if balance_loss is not None:
+                    # --dp
+                    if balance_loss.dim() > 0:
+                        balance_loss = balance_loss.mean()
+                    loss += self.args.balance_loss_weight * balance_loss
                 loss = loss.detach().cpu()
                 total_loss.append(loss)
                 total_count.append(batch_x.shape[0])
@@ -152,7 +166,17 @@ class Exp_Forecast(Exp_Basic):
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                outputs = self.model(batch_x, batch_x_mark, batch_y_mark)
+                out = self.model(batch_x, batch_x_mark, batch_y_mark)
+
+                if isinstance(out, tuple) and len(out) == 3:
+                    outputs, attns, balance_loss = out
+                elif isinstance(out, tuple) and len(out) == 2:
+                    outputs, balance_loss = out
+                    attns = None
+                else:
+                    outputs = out
+                    balance_loss = None
+
                 if self.args.dp:
                     torch.cuda.synchronize()
                 if self.args.nonautoregressive:
@@ -165,6 +189,11 @@ class Exp_Forecast(Exp_Basic):
                         outputs = outputs[:, :, -1]
                         batch_y = batch_y[:, :, -1]
                 loss = criterion(outputs, batch_y)
+                if balance_loss is not None:
+                    # --dp
+                    if balance_loss.dim() > 0:
+                        balance_loss = balance_loss.mean()
+                    loss += self.args.balance_loss_weight * balance_loss
                 if (i + 1) % 100 == 0:
                     if (self.args.ddp and self.args.local_rank == 0) or not self.args.ddp:
                         print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
@@ -226,7 +255,8 @@ class Exp_Forecast(Exp_Basic):
         total_mape, total_mspe, total_smape = 0.0, 0.0, 0.0
         total_count = 0
 
-        folder_path = './test_results/' + setting + '/'
+        # folder_path = './test_results/' + setting + '/'
+        folder_path = './test_results/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
@@ -258,7 +288,14 @@ class Exp_Forecast(Exp_Basic):
                 for j in range(inference_steps):  
                     if len(pred_y) != 0:
                         batch_x = torch.cat([batch_x[:, self.args.input_token_len:, :], pred_y[-1]], dim=1)
-                    outputs = self.model(batch_x, batch_x_mark, batch_y_mark)
+                    
+                    out = self.model(batch_x, batch_x_mark, batch_y_mark)
+
+                    if isinstance(out, tuple):
+                        outputs = out[0]
+                    else:
+                        outputs = out
+
                     pred_y.append(outputs[:, -self.args.output_token_len:, :])
                 pred_y = torch.cat(pred_y, dim=1)
                 if dis != 0:
@@ -291,13 +328,15 @@ class Exp_Forecast(Exp_Basic):
                         print("\titers: {}, speed: {:.4f}s/iter, left time: {:.4f}s".format(i + 1, speed, left_time))
                         iter_count = 0
                         time_now = time.time()
-                if self.args.visualize and i % 2 == 0:
-                    dir_path = folder_path + f'{self.args.test_pred_len}/'
+                if self.args.visualize and i % 5 == 0:
+                    dir_path = folder_path + f'{self.args.model}/' + f'{self.args.model_id}/'
                     if not os.path.exists(dir_path):
                         os.makedirs(dir_path)
+                    lookback = batch_x[0, -self.args.test_seq_len:, -1].detach().cpu().numpy()
                     gt = np.array(true[0, :, -1])
                     pd = np.array(pred[0, :, -1])
-                    visual(gt, pd, os.path.join(dir_path, f'{i}.pdf'))
+                    # visual(gt, pd, os.path.join(dir_path, f'{i}.pdf'))
+                    visual_with_lookback(gt, pd, lookback, os.path.join(dir_path, f'{i}.html'))
 
         avg_mae = total_mae / total_count
         avg_mse = total_mse / total_count

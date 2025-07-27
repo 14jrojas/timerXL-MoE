@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+export CUDA_VISIBLE_DEVICES=0,1
 model_name=timer_xl
 token_num=30
 token_len=96
@@ -17,9 +17,9 @@ python -u run.py \
   --test_seq_len $seq_len \
   --test_pred_len 96 \
   --e_layers 8 \
-  --d_model 1024 \
-  --d_ff 2048 \
-  --batch_size 16384 \
+  --d_model 512 \
+  --d_ff 512 \
+  --batch_size 512 \
   --learning_rate 0.00005 \
   --train_epochs 10 \
   --gpu 0 \
@@ -28,4 +28,5 @@ python -u run.py \
   --use_norm \
   --valid_last \
   --dp \
-  --devices 0,1,2,3,4,5,6,7
+  --devices 0,1 \
+  --num_workers 0 \

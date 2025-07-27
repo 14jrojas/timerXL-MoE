@@ -62,7 +62,15 @@ class Model(nn.Module):
         embed_out = self.embedding(x)
         # [B, C * N, D]
         embed_out = embed_out.reshape(B, C * N, -1)
-        embed_out, attns = self.blocks(embed_out, n_vars=C, n_tokens=N)
+
+        block_output = self.blocks(embed_out, n_vars=C, n_tokens=N)
+
+        if isinstance(block_output, tuple) and len(block_output) == 3:
+            embed_out, attns, gate_probs_list = block_output
+        else:
+            embed_out, attns = block_output
+            gate_probs_list = None
+
         # [B, C * N, P]
         dec_out = self.head(embed_out)
         # [B, C, N * P]

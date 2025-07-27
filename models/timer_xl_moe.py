@@ -53,7 +53,12 @@ class Model(nn.Module):
         embed_out = self.embedding(x)
         # [B, C * N, D]
         embed_out = embed_out.reshape(B, C * N, -1)
-        embed_out, attns = self.blocks(embed_out, n_vars=C, n_tokens=N)
+        embed_out, attns, gate_probs_list = self.blocks(embed_out, n_vars=C, n_tokens=N)
+
+        balance_loss = torch.tensor(0.0, device=x.device)
+        if gate_probs_list is not None:
+            balance_loss = sum((g.mean(0) ** 2).sum() for g in gate_probs_list)
+
         # [B, C * N, P]
         dec_out = self.head(embed_out)
         # [B, C, N * P]
@@ -64,8 +69,8 @@ class Model(nn.Module):
         if self.use_norm:
             dec_out = dec_out * stdev + means
         if self.output_attention:
-            return dec_out, attns
-        return dec_out
+            return dec_out, attns, balance_loss
+        return dec_out, balance_loss
 
     def forward(self, x, x_mark, y_mark):
         return self.forecast(x, x_mark, y_mark)
