@@ -51,6 +51,7 @@ if __name__ == '__main__':
     # MoE arguments
     parser.add_argument('--num_experts', type=int, default=16, help='number of experts')
     parser.add_argument('--num_experts_per_token', type=int, default=2, help='number of experts per token')
+    parser.add_argument('--balance_loss_weight', type=float, default=0.05, help='balance loss weight for MoE')
 
     # adaptation
     parser.add_argument('--adaptation', action='store_true', help='adaptation', default=False)

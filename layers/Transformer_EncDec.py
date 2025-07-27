@@ -113,20 +113,26 @@ class TimerLayer(nn.Module):
         self.activation = F.relu if activation == "relu" else F.gelu
 
     def forward(self, x, n_vars, n_tokens, attn_mask=None, tau=None, delta=None):
-        new_x, attn = self.attention(
+        output = self.attention(
             x, x, x,
             n_vars=n_vars,
             n_tokens=n_tokens,
             attn_mask=attn_mask,
             tau=tau, delta=delta
         )
+        if len(output) == 3:
+            new_x, attn, gate_probs = output
+        else:
+            new_x, attn = output
+            gate_probs = None
+
         x = x + self.dropout(new_x)
 
         y = x = self.norm1(x)
         y = self.dropout(self.activation(self.conv1(y.transpose(-1, 1))))
         y = self.dropout(self.conv2(y).transpose(-1, 1))
 
-        return self.norm2(x + y), attn
+        return self.norm2(x + y), attn, gate_probs
 
 
 class Encoder(nn.Module):
@@ -225,22 +231,36 @@ class TimerBlock(nn.Module):
         # x [B, L, D]
         attns = []
         if self.conv_layers is not None:
+            gate_probs_list = []
             for i, (attn_layer, conv_layer) in enumerate(zip(self.attn_layers, self.conv_layers)):
                 delta = delta if i == 0 else None
-                x, attn = attn_layer(
+                out = attn_layer(
                     x, attn_mask=attn_mask, tau=tau, delta=delta)
-                x = conv_layer(x)
+                if len(out) == 3:
+                    x, attn, gate_probs = out
+                else:
+                    x, attn = out
+                    gate_probs = None
                 attns.append(attn)
+                gate_probs_list.append(gate_probs)
+                x = conv_layer(x)
             x, attn = self.attn_layers[-1](x, n_vars,
                                            n_tokens, tau=tau, delta=None)
             attns.append(attn)
         else:
+            gate_probs_list = []
             for attn_layer in self.attn_layers:
-                x, attn = attn_layer(x, n_vars, n_tokens,
+                out = attn_layer(x, n_vars, n_tokens,
                                      attn_mask=attn_mask, tau=tau, delta=delta)
+                if len(out) == 3:
+                    x, attn, gate_probs = out
+                    gate_probs_list.append(gate_probs)
+                else:
+                    x, attn = out
+                    gate_probs_list.append(None)
                 attns.append(attn)
 
         if self.norm is not None:
             x = self.norm(x)
 
-        return x, attns
+        return x, attns, gate_probs_list

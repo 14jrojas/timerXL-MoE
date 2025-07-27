@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import pandas as pd
 import torch.distributed as dist
 plt.switch_backend('agg')
@@ -95,3 +96,76 @@ def visual(true, preds=None, name='./pic/test.pdf'):
         plt.plot(preds, label='Prediction', linewidth=2)
     plt.legend()
     plt.savefig(name, bbox_inches='tight')
+
+def visual_with_lookback(true, preds=None, lookback=None, name='./pic/test.html'):
+    """
+    Results visualization with optional lookback window using Plotly
+    Saves the output to an interactive HTML file.
+    """
+    true = np.array(true)
+    fig = go.Figure()
+
+    if lookback is not None:
+        lookback = np.array(lookback)
+        full_series_gt = np.concatenate([lookback, true])
+        x_axis = np.arange(len(full_series_gt))
+
+        if preds is not None:
+            preds = np.array(preds)
+            full_series_pred = np.concatenate([np.full(len(lookback), np.nan), preds])
+            fig.add_trace(go.Scatter(x=x_axis, y=full_series_pred,
+                                     mode='lines',
+                                     name='Prediction'))
+
+        fig.add_trace(go.Scatter(x=x_axis, y=full_series_gt,
+                                 mode='lines',
+                                 name='GroundTruth'))
+
+    else:
+        x_axis = np.arange(len(true))
+        fig.add_trace(go.Scatter(x=x_axis, y=true,
+                                 mode='lines',
+                                 name='GroundTruth'))
+
+        if preds is not None:
+            preds = np.array(preds)
+            fig.add_trace(go.Scatter(x=x_axis, y=preds,
+                                     mode='lines',
+                                     name='Prediction'))
+
+    fig.update_layout(
+        title='Forecast vs GroundTruth',
+        xaxis_title='Time Step',
+        yaxis_title='Value',
+        legend=dict(x=0.01, y=0.99),
+        template='seaborn',
+        xaxis=dict(range=[2500, len(x_axis)])
+    )
+
+    fig.write_html(name)
+    fig.write_image(name.replace('.html', '.png'))
+
+
+
+# def visual_with_lookback(true, preds=None, lookback=None, name='./pic/test.pdf'):
+#     """
+#     Results visualization with optional lookback window
+#     """
+#     plt.figure()
+#     if lookback is not None:
+#         lookback = np.array(lookback)
+#         full_series_gt = np.concatenate([lookback, true])
+#         full_series_pred = np.concatenate([np.full(len(lookback), np.nan), preds]) if preds is not None else None
+#         x_axis = np.arange(len(full_series_gt))
+
+#         plt.plot(x_axis, full_series_gt, label='GroundTruth', linewidth=2)
+#         if full_series_pred is not None:
+#             plt.plot(x_axis, full_series_pred, label='Prediction', linewidth=2)
+#         plt.plot(np.arange(len(lookback)), lookback, label='Lookback Input', linestyle='--', linewidth=2)
+#     else:
+#         plt.plot(true, label='GroundTruth', linewidth=2)
+#         if preds is not None:
+#             plt.plot(preds, label='Prediction', linewidth=2)
+
+#     plt.legend()
+#     plt.savefig(name, bbox_inches='tight')

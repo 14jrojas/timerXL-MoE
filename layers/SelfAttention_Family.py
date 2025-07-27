@@ -189,6 +189,7 @@ class AttentionLayerMoE(nn.Module):
             delta=delta
         )
         out = out.view(B, L, -1)
+        out, gate_probs = self.out_projection(out)
 
-        return self.out_projection(out), attn
+        return out, attn, gate_probs
 
